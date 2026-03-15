@@ -113,7 +113,10 @@ export async function verifyTicketAccess(
     if (!res.ok) return false;
 
     const data = (await res.json()) as VerifyTicketAccessResponse;
-    ticketAccessCache.set(cacheKey, { allowed: data.allowed, expires: Date.now() + TICKET_ACCESS_CACHE_TTL });
+    ticketAccessCache.set(cacheKey, {
+      allowed: data.allowed,
+      expires: Date.now() + TICKET_ACCESS_CACHE_TTL,
+    });
     return data.allowed;
   } catch {
     console.error('[auth] Failed to verify ticket access via callback');

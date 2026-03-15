@@ -26,14 +26,22 @@ const typingRateLimits = new Map<string, TypingRecord>();
 /**
  * Check and record a connection attempt. Returns error message if blocked, null if allowed.
  */
-export function checkConnectionAttempt(ip: string, type: 'no-token' | 'invalid-token'): string | null {
+export function checkConnectionAttempt(
+  ip: string,
+  type: 'no-token' | 'invalid-token',
+): string | null {
   const now = Date.now();
   const key = `${type}:${ip}`;
   const attempts = connectionAttempts.get(key);
 
   if (attempts) {
-    if (now - attempts.firstAttempt < CONNECTION_ATTEMPT_BAN_TIME && attempts.count >= MAX_CONNECTION_ATTEMPTS) {
-      return type === 'no-token' ? 'Too many connection attempts' : 'Too many invalid token attempts';
+    if (
+      now - attempts.firstAttempt < CONNECTION_ATTEMPT_BAN_TIME &&
+      attempts.count >= MAX_CONNECTION_ATTEMPTS
+    ) {
+      return type === 'no-token'
+        ? 'Too many connection attempts'
+        : 'Too many invalid token attempts';
     }
     if (now - attempts.firstAttempt > CONNECTION_ATTEMPT_WINDOW) {
       connectionAttempts.delete(key);

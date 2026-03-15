@@ -37,14 +37,8 @@ export interface WebSocketEvents {
   'support:typing': (data: { ticketId: string; isTyping: boolean }) => void;
 
   // Server -> Client
-  'support:message:new': (data: {
-    ticketId: string;
-    message: SupportMessage;
-  }) => void;
-  'support:ticket:updated': (data: {
-    ticketId: string;
-    ticket: TicketUpdate;
-  }) => void;
+  'support:message:new': (data: { ticketId: string; message: SupportMessage }) => void;
+  'support:ticket:updated': (data: { ticketId: string; ticket: TicketUpdate }) => void;
   'support:ticket:assigned': (data: {
     ticketId: string;
     assignedTo: string | null;
@@ -66,10 +60,7 @@ export interface WebSocketEvents {
   // Profile Comments
   'profile:join': (data: { profileId: string }) => void;
   'profile:leave': (data: { profileId: string }) => void;
-  'profile:comment:new': (data: {
-    profileId: string;
-    comment: ProfileComment;
-  }) => void;
+  'profile:comment:new': (data: { profileId: string; comment: ProfileComment }) => void;
 }
 
 // --- Data Shapes ---

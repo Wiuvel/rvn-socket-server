@@ -30,9 +30,8 @@ function parseCookies(header: string | undefined): Record<string, string> {
 }
 
 // --- Engine.IO (Bun native) ---
-const corsOrigin = CORS_ORIGINS.length > 0
-  ? CORS_ORIGINS
-  : (process.env.NODE_ENV === 'development' ? true : false);
+const corsOrigin =
+  CORS_ORIGINS.length > 0 ? CORS_ORIGINS : process.env.NODE_ENV === 'development' ? true : false;
 
 const engine = new Engine({
   path: '/socket.io/',
@@ -47,7 +46,12 @@ const engine = new Engine({
 });
 
 // --- Socket.IO bound to native engine ---
-const io = new SocketIOServer<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>();
+const io = new SocketIOServer<
+  WebSocketEvents,
+  WebSocketEvents,
+  Record<string, never>,
+  SocketData
+>();
 io.bind(engine);
 
 // --- Auth middleware ---
@@ -120,7 +124,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('error', (error) => {
-    if (!error.message?.includes('transport close') && !error.message?.includes('transport error')) {
+    if (
+      !error.message?.includes('transport close') &&
+      !error.message?.includes('transport error')
+    ) {
       console.error(`[ws] Socket error: ${error.message}`);
     }
   });
@@ -136,9 +143,12 @@ export default {
 
     // Health check
     if (req.method === 'GET' && url.pathname === '/health') {
-      return new Response(JSON.stringify({ status: 'ok', connections: engine.clientsCount }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ status: 'ok', connections: (engine as any).clientsCount }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     // Broadcast REST API
@@ -147,7 +157,7 @@ export default {
     }
 
     // Delegate to engine (Socket.IO transport)
-    return engineHandler.fetch(req, server);
+    return engineHandler.fetch(req, server as any);
   },
   websocket: engineHandler.websocket,
 };

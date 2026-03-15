@@ -2,7 +2,7 @@
  * Support ticket WebSocket handlers
  */
 
-import type { Server, Socket } from 'socket.io';
+import type { Socket } from 'socket.io';
 import type { WebSocketEvents, SocketData } from '../types';
 import { verifyTicketAccess } from '../auth';
 import { checkTypingRateLimit, cleanupSocketRateLimits } from '../rate-limit';

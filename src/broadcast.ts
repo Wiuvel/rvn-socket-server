@@ -16,15 +16,24 @@ import type {
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || '';
 
 function unauthorized(): Response {
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 function ok(): Response {
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 function badRequest(msg: string): Response {
-  return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ error: msg }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export async function handleBroadcastRequest(
@@ -81,6 +90,9 @@ export async function handleBroadcastRequest(
     }
 
     default:
-      return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
   }
 }
