@@ -10,10 +10,12 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || '';
 // Cache: tokenHash -> { user, expires }
 const tokenCache = new Map<string, { user: AuthUser; expires: number }>();
 const TOKEN_CACHE_TTL = 60_000; // 60 seconds
+const MAX_TOKEN_CACHE_SIZE = 10_000;
 
 // Cache: ticketAccess -> { allowed, expires }
 const ticketAccessCache = new Map<string, { allowed: boolean; expires: number }>();
 const TICKET_ACCESS_CACHE_TTL = 30_000; // 30 seconds
+const MAX_TICKET_CACHE_SIZE = 10_000;
 
 // Cleanup interval
 setInterval(() => {
@@ -72,7 +74,11 @@ export async function verifyToken(params: VerifyTokenParams): Promise<AuthUser |
     const data = (await res.json()) as VerifyTokenResponse;
     if (!data.valid || !data.user) return null;
 
-    // Cache successful result
+    // Cache successful result, evict oldest if at capacity
+    if (tokenCache.size >= MAX_TOKEN_CACHE_SIZE) {
+      const firstKey = tokenCache.keys().next().value;
+      if (firstKey) tokenCache.delete(firstKey);
+    }
     tokenCache.set(tokenHash, { user: data.user, expires: Date.now() + TOKEN_CACHE_TTL });
     return data.user;
   } catch {
@@ -113,6 +119,10 @@ export async function verifyTicketAccess(
     if (!res.ok) return false;
 
     const data = (await res.json()) as VerifyTicketAccessResponse;
+    if (ticketAccessCache.size >= MAX_TICKET_CACHE_SIZE) {
+      const firstKey = ticketAccessCache.keys().next().value;
+      if (firstKey) ticketAccessCache.delete(firstKey);
+    }
     ticketAccessCache.set(cacheKey, {
       allowed: data.allowed,
       expires: Date.now() + TICKET_ACCESS_CACHE_TTL,

@@ -14,6 +14,7 @@ import type {
 } from './types';
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || '';
+const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
 function unauthorized(): Response {
   return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -42,8 +43,14 @@ export async function handleBroadcastRequest(
   io: Server<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>,
 ): Promise<Response> {
   // Verify internal API key
-  if (req.headers.get('x-internal-api-key') !== INTERNAL_API_KEY) {
+  if (!INTERNAL_API_KEY || req.headers.get('x-internal-api-key') !== INTERNAL_API_KEY) {
     return unauthorized();
+  }
+
+  // Body size limit
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+    return badRequest('Payload too large');
   }
 
   let body: unknown;

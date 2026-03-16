@@ -1,9 +1,9 @@
 /**
  * Standalone Socket.IO server (Bun runtime)
- * Uses @socket.io/bun-engine for native Bun WebSocket support
+ * Uses @rvncom/socket-bun-engine for native Bun WebSocket support
  */
 
-import { Server as Engine } from '@socket.io/bun-engine';
+import { Server as Engine } from '@rvncom/socket-bun-engine';
 import { Server as SocketIOServer } from 'socket.io';
 import type { WebSocketEvents, SocketData } from './types';
 import { verifyToken, type VerifyTokenParams } from './auth';
@@ -11,27 +11,20 @@ import { checkConnectionAttempt, getAttemptCount, clearConnectionAttempts } from
 import { registerSupportHandlers } from './handlers/support';
 import { registerProfileHandlers } from './handlers/profile';
 import { handleBroadcastRequest } from './broadcast';
+import { parseCookies } from './utils';
 
 const PORT = Number(process.env.PORT) || 3002;
-const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()) || [];
-
-// --- Parse cookies helper ---
-function parseCookies(header: string | undefined): Record<string, string> {
-  if (!header) return {};
-  const result: Record<string, string> = {};
-  for (const part of header.split(';')) {
-    const eq = part.indexOf('=');
-    if (eq === -1) continue;
-    const key = part.slice(0, eq).trim();
-    const value = part.slice(eq + 1).trim();
-    if (key) result[key] = decodeURIComponent(value);
-  }
-  return result;
-}
+const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 // --- Engine.IO (Bun native) ---
 const corsOrigin =
-  CORS_ORIGINS.length > 0 ? CORS_ORIGINS : process.env.NODE_ENV === 'development' ? true : false;
+  CORS_ORIGINS && CORS_ORIGINS.length > 0
+    ? CORS_ORIGINS
+    : process.env.NODE_ENV === 'development'
+      ? true
+      : false;
 
 const engine = new Engine({
   path: '/socket.io/',
@@ -46,12 +39,7 @@ const engine = new Engine({
 });
 
 // --- Socket.IO bound to native engine ---
-const io = new SocketIOServer<
-  WebSocketEvents,
-  WebSocketEvents,
-  Record<string, never>,
-  SocketData
->();
+const io = new SocketIOServer<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>();
 io.bind(engine);
 
 // --- Auth middleware ---
@@ -138,16 +126,14 @@ const engineHandler = engine.handler();
 
 export default {
   port: PORT,
-  async fetch(req: Request, server: unknown) {
+  async fetch(req: Request, bunServer: unknown) {
     const url = new URL(req.url);
 
     // Health check
     if (req.method === 'GET' && url.pathname === '/health') {
       return new Response(
-        JSON.stringify({ status: 'ok', connections: (engine as any).clientsCount }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        },
+        JSON.stringify({ status: 'ok', connections: engine.clientsCount }),
+        { headers: { 'Content-Type': 'application/json' } },
       );
     }
 
@@ -157,9 +143,21 @@ export default {
     }
 
     // Delegate to engine (Socket.IO transport)
-    return engineHandler.fetch(req, server as any);
+    return engineHandler.fetch(req, bunServer as Parameters<typeof engineHandler.fetch>[1]);
   },
   websocket: engineHandler.websocket,
 };
+
+// --- Graceful shutdown ---
+function shutdown() {
+  console.log('[ws] Shutting down...');
+  engine.close().then(() => {
+    console.log('[ws] Server stopped');
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 console.log(`[ws] Socket.IO server running on port ${PORT}`);

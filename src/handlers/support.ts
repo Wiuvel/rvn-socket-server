@@ -6,40 +6,48 @@ import type { Socket } from 'socket.io';
 import type { WebSocketEvents, SocketData } from '../types';
 import { verifyTicketAccess } from '../auth';
 import { checkTypingRateLimit, cleanupSocketRateLimits } from '../rate-limit';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isValidUUID } from '../utils';
 
 export function registerSupportHandlers(
   socket: Socket<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>,
 ): void {
   const { userId, isSupport, user } = socket.data;
 
-  socket.on('support:join', async (data) => {
+  socket.on('support:join', async (data, ack) => {
     const { ticketId } = data;
-    if (!ticketId || !UUID_RE.test(ticketId)) {
+    if (!ticketId || !isValidUUID(ticketId)) {
       socket.emit('support:error', { message: 'Invalid ticket ID', code: 'INVALID_TICKET_ID' });
+      if (typeof ack === 'function') ack({ ok: false, error: 'INVALID_TICKET_ID' });
       return;
     }
 
-    const allowed = await verifyTicketAccess(ticketId, userId, isSupport);
-    if (!allowed) {
-      socket.emit('support:error', { message: 'Access denied', code: 'ACCESS_DENIED' });
-      return;
-    }
+    try {
+      const allowed = await verifyTicketAccess(ticketId, userId, isSupport);
+      if (!allowed) {
+        socket.emit('support:error', { message: 'Access denied', code: 'ACCESS_DENIED' });
+        if (typeof ack === 'function') ack({ ok: false, error: 'ACCESS_DENIED' });
+        return;
+      }
 
-    socket.join(`ticket:${ticketId}`);
+      socket.join(`ticket:${ticketId}`);
+      if (typeof ack === 'function') ack({ ok: true });
+    } catch {
+      console.error(`[ws] Failed to verify ticket access for ${ticketId}`);
+      socket.emit('support:error', { message: 'Verification failed', code: 'VERIFY_FAILED' });
+      if (typeof ack === 'function') ack({ ok: false, error: 'VERIFY_FAILED' });
+    }
   });
 
   socket.on('support:leave', (data) => {
     const { ticketId } = data;
-    if (!ticketId || !UUID_RE.test(ticketId)) return;
+    if (!ticketId || !isValidUUID(ticketId)) return;
     socket.leave(`ticket:${ticketId}`);
   });
 
   socket.on('support:typing', (data) => {
     const { ticketId, isTyping } = data;
     if (!ticketId || typeof isTyping !== 'boolean' || !userId) return;
-    if (!UUID_RE.test(ticketId)) return;
+    if (!isValidUUID(ticketId)) return;
 
     const room = `ticket:${ticketId}`;
     if (!socket.rooms.has(room)) return;
