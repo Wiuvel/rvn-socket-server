@@ -37,10 +37,7 @@ export interface AckResponse {
 
 export interface WebSocketEvents {
   // Client -> Server
-  'support:join': (
-    data: { ticketId: string },
-    ack: (response: AckResponse) => void,
-  ) => void;
+  'support:join': (data: { ticketId: string }, ack: (response: AckResponse) => void) => void;
   'support:leave': (data: { ticketId: string }) => void;
   'support:typing': (data: { ticketId: string; isTyping: boolean }) => void;
 
@@ -69,6 +66,9 @@ export interface WebSocketEvents {
   'profile:join': (data: { profileId: string }) => void;
   'profile:leave': (data: { profileId: string }) => void;
   'profile:comment:new': (data: { profileId: string; comment: ProfileComment }) => void;
+
+  // System
+  'system:notification': (data: BroadcastSystemPayload) => void;
 }
 
 // --- Data Shapes ---
@@ -145,4 +145,9 @@ export interface BroadcastMessageReadPayload {
 export interface BroadcastCommentPayload {
   profileId: string;
   comment: ProfileComment;
+}
+
+export interface BroadcastSystemPayload {
+  message: string;
+  type?: 'info' | 'warning' | 'error';
 }

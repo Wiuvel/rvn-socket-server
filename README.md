@@ -14,7 +14,11 @@ Standalone real-time WebSocket server built on [Socket.IO](https://socket.io/) w
 - Token-based authentication via external auth service callback
 - In-memory token & access caching to minimize auth overhead
 - IP-based rate limiting for connection attempts
+- Per-socket message rate limiting (timer-based)
 - REST broadcast API for service-to-service event delivery
+- Zero-copy broadcast optimization for global notifications
+- Built-in server metrics and RTT measurement
+- Graceful degradation under high load
 - Room-based access control (support tickets, profile comments)
 
 ## Setup
@@ -42,7 +46,7 @@ bun start
 
 ```
 GET /health
-→ { "status": "ok", "connections": 42 }
+→ { "status": "ok", "connections": 42, "degraded": false, "metrics": { ... } }
 ```
 
 ### Broadcast (internal, requires `x-internal-api-key` header)
@@ -54,6 +58,7 @@ GET /health
 | `POST /broadcast/support/ticket-assigned` | Ticket assignment |
 | `POST /broadcast/support/message-read` | Messages marked as read |
 | `POST /broadcast/profile/comment` | New profile comment |
+| `POST /broadcast/system` | System notification (zero-copy broadcast) |
 
 ### Socket.IO Events
 
@@ -70,3 +75,4 @@ GET /health
 - `support:message:read` — messages read
 - `support:error` — error notification
 - `profile:comment:new` — new profile comment
+- `system:notification` — system notification

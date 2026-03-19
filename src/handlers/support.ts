@@ -13,30 +13,33 @@ export function registerSupportHandlers(
 ): void {
   const { userId, isSupport, user } = socket.data;
 
-  socket.on('support:join', async (data: { ticketId: string }, ack: (response: AckResponse) => void) => {
-    const { ticketId } = data;
-    if (!ticketId || !isValidUUID(ticketId)) {
-      socket.emit('support:error', { message: 'Invalid ticket ID', code: 'INVALID_TICKET_ID' });
-      if (typeof ack === 'function') ack({ ok: false, error: 'INVALID_TICKET_ID' });
-      return;
-    }
-
-    try {
-      const allowed = await verifyTicketAccess(ticketId, userId, isSupport);
-      if (!allowed) {
-        socket.emit('support:error', { message: 'Access denied', code: 'ACCESS_DENIED' });
-        if (typeof ack === 'function') ack({ ok: false, error: 'ACCESS_DENIED' });
+  socket.on(
+    'support:join',
+    async (data: { ticketId: string }, ack: (response: AckResponse) => void) => {
+      const { ticketId } = data;
+      if (!ticketId || !isValidUUID(ticketId)) {
+        socket.emit('support:error', { message: 'Invalid ticket ID', code: 'INVALID_TICKET_ID' });
+        if (typeof ack === 'function') ack({ ok: false, error: 'INVALID_TICKET_ID' });
         return;
       }
 
-      socket.join(`ticket:${ticketId}`);
-      if (typeof ack === 'function') ack({ ok: true });
-    } catch {
-      console.error(`[ws] Failed to verify ticket access for ${ticketId}`);
-      socket.emit('support:error', { message: 'Verification failed', code: 'VERIFY_FAILED' });
-      if (typeof ack === 'function') ack({ ok: false, error: 'VERIFY_FAILED' });
-    }
-  });
+      try {
+        const allowed = await verifyTicketAccess(ticketId, userId, isSupport);
+        if (!allowed) {
+          socket.emit('support:error', { message: 'Access denied', code: 'ACCESS_DENIED' });
+          if (typeof ack === 'function') ack({ ok: false, error: 'ACCESS_DENIED' });
+          return;
+        }
+
+        socket.join(`ticket:${ticketId}`);
+        if (typeof ack === 'function') ack({ ok: true });
+      } catch {
+        console.error(`[ws] Failed to verify ticket access for ${ticketId}`);
+        socket.emit('support:error', { message: 'Verification failed', code: 'VERIFY_FAILED' });
+        if (typeof ack === 'function') ack({ ok: false, error: 'VERIFY_FAILED' });
+      }
+    },
+  );
 
   socket.on('support:leave', (data) => {
     const { ticketId } = data;

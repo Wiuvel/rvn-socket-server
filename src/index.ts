@@ -38,6 +38,8 @@ const engine = new Engine({
     windowMs: 1000,
   },
   degradationThreshold: MAX_CLIENTS > 0 ? 0.85 : 0,
+  enableMetrics: true,
+  perMessageDeflate: true,
   cors: {
     origin: corsOrigin,
     methods: ['GET', 'POST'],
@@ -50,8 +52,19 @@ engine.on('degradation', ({ active, clients }) => {
   console.warn(`[ws] Degradation ${active ? 'ON' : 'OFF'} at ${clients} clients`);
 });
 
+engine.on('connection', (socket) => {
+  socket.on('rateLimited', () => {
+    console.warn(`[ws] Engine socket ${socket.id} rate limited`);
+  });
+});
+
 // --- Socket.IO bound to native engine ---
-const io = new SocketIOServer<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>();
+const io = new SocketIOServer<
+  WebSocketEvents,
+  WebSocketEvents,
+  Record<string, never>,
+  SocketData
+>();
 io.bind(engine);
 
 // --- Auth middleware ---
@@ -156,7 +169,7 @@ export default {
 
     // Broadcast REST API
     if (req.method === 'POST' && url.pathname.startsWith('/broadcast/')) {
-      return handleBroadcastRequest(req, url.pathname, io);
+      return handleBroadcastRequest(req, url.pathname, io, engine);
     }
 
     // Delegate to engine (Socket.IO transport)
@@ -168,7 +181,7 @@ export default {
 // --- Graceful shutdown ---
 function shutdown() {
   console.log('[ws] Shutting down...');
-  engine.close().then(() => {
+  engine.shutdown().then(() => {
     console.log('[ws] Server stopped');
     process.exit(0);
   });

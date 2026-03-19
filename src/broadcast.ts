@@ -3,6 +3,7 @@
  */
 
 import type { Server } from 'socket.io';
+import type { Server as Engine } from '@rvncom/socket-bun-engine';
 import type {
   WebSocketEvents,
   SocketData,
@@ -11,6 +12,7 @@ import type {
   BroadcastTicketAssignedPayload,
   BroadcastMessageReadPayload,
   BroadcastCommentPayload,
+  BroadcastSystemPayload,
 } from './types';
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || '';
@@ -41,6 +43,7 @@ export async function handleBroadcastRequest(
   req: Request,
   pathname: string,
   io: Server<WebSocketEvents, WebSocketEvents, Record<string, never>, SocketData>,
+  engine: Engine,
 ): Promise<Response> {
   // Verify internal API key
   if (!INTERNAL_API_KEY || req.headers.get('x-internal-api-key') !== INTERNAL_API_KEY) {
@@ -93,6 +96,18 @@ export async function handleBroadcastRequest(
       const data = body as BroadcastCommentPayload;
       if (!data.profileId || !data.comment) return badRequest('Missing profileId or comment');
       io.to(`profile:${data.profileId}`).emit('profile:comment:new', data);
+      return ok();
+    }
+
+    case '/broadcast/system': {
+      const data = body as BroadcastSystemPayload;
+      if (!data.message) return badRequest('Missing message');
+      // Leverage 1.0.4 zero-copy broadcast:
+      // '4' is Engine.IO message (added by engine), '2' is Socket.IO event.
+      // The resulting engine payload should be '2["system:notification",{"message":"..."}]'
+      // which engine will frame as '42["system:notification",{"message":"..."}]'
+      const packet = '2' + JSON.stringify(['system:notification', data]);
+      engine.broadcast(packet);
       return ok();
     }
 
